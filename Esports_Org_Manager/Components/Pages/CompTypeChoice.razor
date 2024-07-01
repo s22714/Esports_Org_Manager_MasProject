@@ -1,0 +1,99 @@
+﻿@page "/tourneys/create"
+@inject TourneyService tourneyService
+@inject TeamService teamService
+@inject NavigationManager navigationManager
+@attribute [StreamRendering(true)]
+@rendermode @(new InteractiveServerRenderMode(false))
+@inject IJSRuntime js
+
+<!-- choosing one ot the tourney type options -->
+
+<div>
+    <input type="checkbox" checked=@solo @onchange=CheckSolo />
+    <label for="addition" >Solo</label>
+
+    <input type="checkbox" checked=@team @onchange=CheckTeam />
+    <label for="addition">Team</label>
+</div>
+<!-- display if solo -->
+@if(solo)
+{
+    <div>
+        <input type="checkbox" checked=@coachingAllowed @onchange=CoachingValueSwitch />
+        <label for="addition">Is coaching allowed</label>
+        <label>@coachingAllowed</label>
+    </div>
+
+}
+else if(team)
+{
+<!-- display if chose team -->
+    <div>
+        <InputNumber TValue="int" EnableMinMax="true" Min="@minPenalty" TextAlignment="Alignment.Center" Placeholder="Enter number" @bind-Value="@penalty" />
+        <label>Team member change penalty </label>
+    </div>
+}
+<div>
+    <button @onclick="Cancel" class="btn btn-primary">cancel</button>
+    <button @onclick="ProceedSolo" class="btn btn-primary">Proceed</button>
+</div>
+
+@code {
+    
+    
+    private bool solo { get; set; }
+    private bool team { get; set; }
+
+    // variable phat will have value if chosen solo type
+    private bool coachingAllowed { get; set; }
+
+    // varable != null if chosen team
+    private int penalty { get; set; }
+
+    private readonly int minPenalty = 0;
+
+    protected async Task CoachingValueSwitch()
+    {
+        coachingAllowed = !coachingAllowed;
+    }
+
+    protected async Task CheckSolo(ChangeEventArgs e)
+    {
+        solo = true;
+        team = false;
+    }
+
+    protected async Task CheckTeam(ChangeEventArgs e)
+    {
+        solo = false;
+        team = true;
+    }
+
+    protected async void ProceedSolo()
+    {
+        if(solo == false && team == false)
+        {
+            await js.InvokeAsync<bool>("confirm", $"No competition type chosen");
+            return;
+        }
+
+
+        if(solo)
+            navigationManager.NavigateTo($"/tourneys/create/{coachingAllowed}");
+        else if (team)
+        {
+            List<Team> teams = await teamService.GetAllTeams();
+            if(teams.Count < 2)
+            {
+                await js.InvokeAsync<bool>("confirm", $"No teams in system");
+                return;
+            }
+            navigationManager.NavigateTo($"/tourneys/create/{penalty}");
+        }
+        
+    }
+    protected void Cancel()
+    {
+        navigationManager.NavigateTo("/tourneys");
+    }
+}

@@ -1,0 +1,45 @@
+﻿@page "/teams/details={id:int}"
+@inject TourneyService tourneyService
+@inject TeamService teamService
+@inject NavigationManager navigationManager
+@inject ListPasser listPasser
+@attribute [StreamRendering(true)]
+@rendermode @(new InteractiveServerRenderMode(false))
+
+<h3>TeamDetails</h3>
+@if(team != null)
+{
+    <label>Name: @team.name</label>
+    <br />
+    <label>Game: @team.gamePlayed</label>
+    <br />
+    <label>Creation date: @team.creationDate</label>
+    <br />
+    <label>logo: @team.logo</label>
+    <br />
+    <label>min employee age: @team.minimalAgeEligibility</label>
+    <br />
+    <label>min player number: @team.minimalNumberOfPlayers</label>
+    <br />
+    <label>status: @team.status</label>
+    <br />
+    <label>organization name: @team.organizationName</label>
+    <br />
+    <br />
+    <label>Players</label><br />
+    @foreach(var e in team.memberships)
+    {
+        <label> - @e.employee.name @e.employee.lastName | @e.employee.nick</label><br />
+    }
+}
+
+
+@code {
+    [Parameter]
+    public int id { get; set; }
+    Team team;
+    protected override async void OnInitialized()
+    {
+        team = await teamService.GetTeamWithDetailsWithID(id);
+    }
+}

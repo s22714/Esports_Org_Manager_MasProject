@@ -1,0 +1,300 @@
+﻿@page "/tourneys/create/{coaching:bool}"
+@page "/tourneys/create/{penalty:int}"
+@inject TourneyService tourneyService
+@inject TeamService teamService
+@inject NavigationManager navigationManager
+@inject ListPasser listPasser
+@attribute [StreamRendering(true)]
+@rendermode @(new InteractiveServerRenderMode(false))
+@inject IJSRuntime js
+
+
+@if(coaching != null && !creatingEmployee)
+{
+    <h3>Pick Participants</h3>
+    <div style="display: inline;" >
+        <table class="table" style="float: left; width=50%;">
+            <thead>
+                <tr>
+                    <th>team name</th>
+                    <th>availability</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var team in teams ?? throw new ArgumentNullException())
+                {
+                    <tr @onclick="@(() => PickedRow(team))">
+                        <td>@team.name</td>
+                        <td>@team.status</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <table class="table" style="float: left">
+            <thead>
+                <tr>
+                    <th>nick</th>
+                    <th>availability</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if(chosenTeam.memberships.Count == 0)
+                {
+                    <label>No Employees in the team</label>
+                }
+                else
+                {
+                    @foreach (var membership in chosenTeam.memberships ?? throw new ArgumentNullException())
+                    {
+                        <tr>
+                            <td>@membership.employee.nick</td>
+                            <td>@membership.employee.status</td>
+                            <td><input type="checkbox" checked=@(chosenEmployees.Contains(membership.employee)) @onchange="eventArgs => {CheckingPlayers(membership.employee, eventArgs.Value);}" disabled=@(membership.employee.status == AvailabilityStatus.unavailable)/></td>
+                        </tr>
+                    }
+                    
+                }
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td><button class="btn btn-primary" @onclick="CreateNewPlayer">+</button></td>
+                </tr>
+            </tbody
+        </table>
+    </div>
+    <button class="btn btn-primary" @onclick="Cancel">Cancel</button>
+    <button class="btn btn-primary" @onclick="Proceed">Proceed</button>
+}
+@if(penalty != null && !creatingEmployee)
+{
+    <h3>Pick Teams</h3>
+    <div style="display: inline;" >
+        <table class="table" style="float: left; width=50%;">
+            <thead>
+                <tr>
+                    <th>team name</th>
+                    <th>availability</th>
+                    <th>will participate</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var team in teams ?? throw new ArgumentNullException())
+                {
+                    <tr @onclick="@(() => PickedRow(team))">
+                        <td>@team.name</td>
+                        <td>@team.status</td>
+                        <td><input type="checkbox" @onchange="eventArgs => {CheckingTeams(team, eventArgs.Value);}" checked=@(chosenTeams.Contains(team)) disabled=@(team.status == AvailabilityStatus.unavailable) /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <table class="table" style="float: left">
+            <thead>
+                <tr>
+                    <th>nick</th>
+                    <th>availability</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if(chosenTeam.memberships.Count == 0)
+                {
+                    <label>No Employees in the team</label>
+                }
+                else
+                {
+                    @foreach (var membership in chosenTeam.memberships ?? throw new ArgumentNullException())
+                    {
+                        <tr>
+                            <td>@membership.employee.nick</td>
+                            <td>@membership.employee.status</td>
+                        </tr>
+                    }
+                    
+                }
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td><button class="btn btn-primary" @onclick="CreateNewPlayer">+</button></td>
+                </tr>
+            </tbody
+        </table>
+    </div>
+    <button class="btn btn-primary" @onclick="Cancel">Cancel</button>
+    <button class="btn btn-primary" @onclick="Proceed">Proceed</button>
+}
+@if (creatingEmployee)
+{
+    <h3>New team member</h3>
+    <div>
+        <InputText TextAlignment="Alignment.Center" Placeholder="Enter name" @bind-Value=newEmpName />
+        <label>Name </label>
+        
+    </div>
+    <div>
+        <InputText TextAlignment="Alignment.Center" Placeholder="Enter lastname" @bind-Value=newEmpLastname />
+        <label>Lastname </label>
+    </div>
+    <div>
+        <InputText TextAlignment="Alignment.Center" Placeholder="Enter nick" @bind-Value=newEmpNick />
+        <label>Nick </label>
+    </div>
+    <div>
+        <InputText TextAlignment="Alignment.Center" Placeholder="Enter email" @bind-Value=newEmpEmail />
+        <label>Email </label>
+    </div>
+    <div>
+        <InputText TextAlignment="Alignment.Center" Placeholder="Enter city name" @bind-Value=newEmpCity />
+        <label>City name </label>
+    </div>
+    <div>
+        <InputText TextAlignment="Alignment.Center" Placeholder="Enter road name" @bind-Value=newEmpRoad />
+        <label>Road name </label>
+    </div>
+    <div>
+        <InputNumber TValue="int" TextAlignment="Alignment.Center" Placeholder="Enter home number" @bind-Value=newEmpHome />
+        <label>Home number </label>
+    </div>
+
+
+    <button class="btn btn-primary" @onclick="CancelEmployeeCreate">Cancel</button>
+    <button class="btn btn-primary" @onclick="SaveNewEmployee">Proceed</button>
+
+}
+
+@code {
+    [Parameter]
+    public bool? coaching { get; set; }
+    [Parameter]
+    public int? penalty { get; set; }
+
+    protected bool creatingEmployee { get; set; }
+
+    List<Team> teams = new List<Team>();
+
+    // team that have been pressed on or first one by default
+    Team chosenTeam;
+
+    // if solo tourney. otherwise empty
+    List<Employee> chosenEmployees = new List<Employee>();
+
+    //if team tourney. otherwise empty
+    List<Team> chosenTeams = new List<Team>();
+
+    string newEmpName = "";
+    string newEmpLastname = "";
+    string newEmpNick = "";
+    string newEmpEmail = "";
+    string newEmpCity = "";
+    string newEmpRoad = "";
+    int newEmpHome = 0;
+
+    protected override async void OnInitialized()
+    {
+        creatingEmployee = false;
+        teams = await teamService.GetAllTeams();
+        if(teams.Count != 0)
+            chosenTeam = teams[0];
+    }
+
+    void CheckingTeams(Team team, object chVal)
+    {
+        if ((bool)chVal)
+        {
+
+            if (!chosenTeams.Contains(team))
+            {
+                chosenTeams.Add(team);
+            }
+        }
+        else
+        {
+            if (chosenTeams.Contains(team))
+            {
+                chosenTeams.Remove(team);
+            }
+        }
+    }
+
+    void CheckingPlayers(Employee employee, object chVal)
+    {
+        if ((bool)chVal)
+        {
+
+            if (!chosenEmployees.Contains(employee))
+            {
+                chosenEmployees.Add(employee);
+            }
+        }
+        else
+        {
+            if (chosenEmployees.Contains(employee))
+            {
+                chosenEmployees.Remove(employee);
+            }
+        }
+    }
+
+    protected void PickedRow(Team team)
+    {
+        chosenTeam = team;
+    }
+
+    protected void CreateNewPlayer()
+    {
+        creatingEmployee = true;
+    }
+
+    protected void CancelEmployeeCreate()
+    {
+        creatingEmployee = false;
+        newEmpName = "";
+        newEmpLastname = "";
+        newEmpNick = "";
+        newEmpEmail = "";
+        newEmpCity = "";
+        newEmpRoad = "";
+        newEmpHome = 0;
+    }
+
+    protected async Task SaveNewEmployee()
+    {
+        var employee = new Employee(newEmpName, newEmpLastname, newEmpNick, newEmpEmail, new Adress(newEmpCity, newEmpRoad, newEmpHome), 0, AvailabilityStatus.available, null, null, null, null, 5);
+        employee.organizationName = chosenTeam.organizationName;
+        Membership newMembership = new Membership(DateTime.Now, DateTime.Now.AddDays(7), chosenTeam, employee);
+        await teamService.SaveNewMembership(newMembership);
+        chosenTeam.CheckTeamTourneyJoinAvailability();
+        CancelEmployeeCreate();
+    }
+
+    protected void Cancel()
+    {
+        navigationManager.NavigateTo("/tourneys");
+    }
+
+    protected async void Proceed()
+    {
+        if(coaching != null && chosenEmployees.Count < 2)
+        {
+            await js.InvokeAsync<bool>("confirm", $"Not enoutch participants chosen");
+            return;
+        }
+        if(penalty != null && chosenTeams.Count < 2)
+        {
+            await js.InvokeAsync<bool>("confirm", $"Not enoutch participants chosen");
+            return;
+        }
+        if (coaching != null && chosenEmployees.Count >= 2 || penalty != null && chosenTeams.Count >= 2)
+        {
+            listPasser.empList = chosenEmployees;
+            listPasser.teamList = chosenTeams;
+
+            if(coaching != null)
+                navigationManager.NavigateTo($"/tourneys/create/data/{coaching}");
+            if(penalty != null)
+                navigationManager.NavigateTo($"/tourneys/create/data/{penalty}");
+        }
+        
+    }
+}

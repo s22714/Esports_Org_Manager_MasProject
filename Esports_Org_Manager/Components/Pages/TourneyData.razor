@@ -1,0 +1,535 @@
+﻿@page "/tourneys/create/data/{penalty:int}"
+@page "/tourneys/create/data/{coaching:bool}"
+@inject TourneyService tourneyService
+@inject TeamService teamService
+@inject EmployeeService employeeService
+@inject NavigationManager navigationManager
+@inject ListPasser listPasser
+@attribute [StreamRendering(true)]
+@rendermode @(new InteractiveServerRenderMode(false))
+@inject IJSRuntime js
+
+@if(!pickingOrganizers && !creatingContractor){
+    <div style="display:flex; justify-content: center;">
+        <div>
+<div>
+    <InputText TextAlignment="Alignment.Center" Placeholder="Enter tourney name" @bind-Value=name />
+    <label>Name </label>
+</div>
+<div>
+    <InputText TextAlignment="Alignment.Center" Placeholder="Enter format" @bind-Value=format />
+    <label>Format </label>
+</div>
+<div>
+    <InputDate TextAlignment="Alignment.Center" Placeholder="Enter date" @bind-Value=date />
+    <InputText type="time" TValue="TimeOnly" @bind-Value=time />
+    <label>Date </label>
+</div>
+<div>
+    <InputNumber TValue="double" TextAlignment="Alignment.Center" Placeholder="Enter award pool" @bind-Value=awardPool />
+    <label>Award pool </label>
+</div>
+<div>
+
+    <label>Award per place </label>
+    <table class="table-bordered">
+        <thead>
+            <tr >
+                <th>place</th>
+                <th>procentage</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for(int i = 0; i < awardPerPlace.Count; i++)
+            {
+                int index = i;
+                <tr>
+                    <td>@(index + 1)</td>
+                    <td><InputNumber TValue="int" EnableMinMax="true" Min="0" Max="100" @onblur="VerifyAwardPerPlace"  @bind-Value=@(awardPerPlace[index]) /></td>
+                </tr> 
+            }
+            <tr>
+                <td><button style="width: 100%" class="btn btn-primary" @onclick="RemoveAwardPlace" >-</button></td>
+                <td rowspan="2"><button style="width: 100%" class="btn btn-primary" @onclick="AddAwardPlace" >+</button></td>
+            </tr>
+        </tbody
+    </table>
+</div>
+</div>
+<div>
+    <div>
+        <input type="checkbox" @bind-value=onlineTourney />
+        <label>Online </label>
+        @if (onlineTourney)
+        {
+            <table class="table-bordered">
+                <thead>
+                    <tr>
+                        <th>links</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for(int i = 0; i < liveLinks.Count; i++)
+                    {
+                        int index = i;
+                        <tr>
+                            <td><InputText @bind-Value=@(liveLinks[index]) /></td>
+                        </tr> 
+                    }
+                    <tr>
+                        <td><button style="width: 100% form-inline" class="btn btn-primary" @onclick="RemoveLink" >-</button>
+                        <button style="width: 100% form-inline" class="btn btn-primary" @onclick="Addlink" >+</button></td>
+                    </tr>
+                </tbody
+            </table>
+        }
+
+        <div>
+            <input type="checkbox" @bind-value=offlineTourney />
+            <label>Offline </label>
+        
+        @if (offlineTourney)
+        {
+            <div>
+                <InputNumber TValue="double" TextAlignment="Alignment.Center" Placeholder="Enter ticket price" @bind-Value=ticketPrice />
+                <label>ticket price </label>
+            </div>
+            <div>
+                <InputText TextAlignment="Alignment.Center" Placeholder="Enter city name" @bind-Value=cityName />
+                <label>City </label>
+            </div>
+            <div>
+                <InputText TextAlignment="Alignment.Center" Placeholder="Enter street name" @bind-Value=roadName />
+                <label>Street </label>
+            </div>
+            <div>
+                <InputNumber TValue="int" EnableMinMax="true" Min="1" TextAlignment="Alignment.Center" Placeholder="Enter number" @bind-Value=hNumber />
+                <label>Number </label>
+            </div>
+        }
+</div>
+    </div>
+    
+</div>
+
+</div>
+<div style="display:flex; justify-content: center; margin: 10 10;">
+        <button @onclick="Cancel"  class="btn btn-primary">Cancel</button>
+        <button @onclick="PickOrganizers"  class="btn btn-primary">Proceed</button>
+    </div>
+}
+
+@if (pickingOrganizers && !creatingContractor)
+{
+    <div>
+        <input type="checkbox" checked=@independentOrganizer @onchange=CheckOutsideOrg />
+        <label>Independent </label>
+        <input type="checkbox" checked=@ownOrganizer @onchange=CheckInsideOrg />
+        <label>Inside organization </label>
+    </div>
+    @if (independentOrganizer)
+    {
+        <div style="display: inline;" >
+            <table class="table" style="float: left; width=50%;">
+                <thead>
+                    <tr>
+                        <th>company name</th>
+                        <th>email</th>
+                        <th>price</th>
+                        <th>pick as organizer</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var contractor in allContractors ?? throw new ArgumentNullException())
+                    {
+                        <tr>
+                            <td>@contractor.name</td>
+                            <td>@contractor.email</td>
+                            <td>@contractor.price</td>
+                            <td><input type="checkbox" checked=@(independentCheckboxBools[allContractors.IndexOf(contractor)]) @onchange="eventArgs => {CheckingIndependentContractor(contractor, eventArgs.Value);}" /></td>
+                        </tr>
+                    }
+                    <tr>
+                    <td></td>
+                    <td></td>
+                    <td><button class="btn btn-primary" @onclick="CreateNewIndependentContractor">+</button></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    }
+    @if (ownOrganizer)
+    {
+        <div style="display: inline;" >
+            <table class="table" style="float: left; width=50%;">
+                <thead>
+                    <tr>
+                        <th>nick</th>
+                        <th>availability</th>
+                        <th>assign</th>
+                        <th>is caster</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var creator in allContentCreators ?? throw new ArgumentNullException())
+                    {
+                        <tr>
+                            <td>@creator.nick</td>
+                            <td>@creator.status</td>
+                            <td><input type="checkbox" checked=@(pickedContentCreators.Contains(creator)) @onchange="eventArgs => {CheckingContentCreators(creator, eventArgs.Value);}" disabled=@(creator.status == AvailabilityStatus.unavailable)/></td>
+                            <td><input type="checkbox" checked=@(pickedCasters.Contains(creator)) @onchange="eventArgs => {CheckingCasters(creator, eventArgs.Value);}" disabled=@(creator.status == AvailabilityStatus.unavailable || !pickedContentCreators.Contains(creator))/></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <button class="btn btn-primary" @onclick="Cancel">Cancel</button>
+    <button class="btn btn-primary" @onclick="SaveTourney">Proceed</button>
+}
+
+@if (creatingContractor)
+{
+            <div>
+                <InputText TextAlignment="Alignment.Center" Placeholder="Enter city name" @bind-Value=conname />
+                <label>name </label>
+            </div>
+            <div>
+                <InputText TextAlignment="Alignment.Center" Placeholder="Enter city name" @bind-Value=conemail />
+                <label>email </label>
+            </div>
+            <div>
+                <InputNumber TValue="double" EnableMinMax="true" Min="1" TextAlignment="Alignment.Center" Placeholder="Enter number" @bind-Value=conprice />
+                <label>price </label>
+            </div>
+            <button class="btn btn-primary" @onclick="CancelCreateCon">Cancel</button>
+    <button class="btn btn-primary" @onclick="SaveCon">Proceed</button>
+}
+@code {
+    [Parameter]
+    public bool? coaching { get; set; }
+    [Parameter]
+    public int? penalty { get; set; }
+
+    string name = "";
+    string format = "";
+    DateTime date = DateTime.Now;
+    string time = "";
+    double awardPool = 0;
+    List<int> awardPerPlace = new List<int>();
+    bool onlineTourney = false;
+    bool offlineTourney = false;
+    List<string> liveLinks = new List<string>();
+    double ticketPrice = 0;
+
+    string cityName = "";
+    string roadName = "";
+    int hNumber = 1;
+
+
+    bool independentOrganizer;
+    bool ownOrganizer;
+
+    bool pickingOrganizers = false;
+
+    List<IndependentContractor> allContractors = new List<IndependentContractor>();
+    List<Employee> allContentCreators = new List<Employee>();
+    bool[] independentCheckboxBools;
+
+    IndependentContractor pickedContractor;
+    List<Employee> pickedContentCreators = new List<Employee>();
+    List<Employee> pickedCasters = new List<Employee>();
+
+    protected override async void OnInitialized()
+    {
+        allContractors = await tourneyService.GetAllContractors();
+        independentCheckboxBools = new bool[allContractors.Count];
+        allContentCreators = await employeeService.GetAllContentCreators();
+        foreach(var creator in allContentCreators)
+        {
+            if (listPasser.empList.Contains(creator))
+            {
+                allContentCreators.Remove(creator);
+            }
+        }
+    }
+
+    async void CheckingIndependentContractor(IndependentContractor contractor, object chVal)
+    {
+        if ((bool)chVal)
+        {
+
+            if (pickedContractor != contractor)
+            {
+                pickedContractor = contractor;
+            }
+            for(int i = 0; i < independentCheckboxBools.Length; i++)
+            {
+                if (i == allContractors.IndexOf(contractor))
+                {
+                    independentCheckboxBools[allContractors.IndexOf(contractor)] = true;
+                }
+                else
+                {
+                    independentCheckboxBools[i] = false;                    
+                }
+            }
+        }
+        else
+        {
+            pickedContractor = null;
+        }
+    }
+
+    async void CheckingContentCreators(Employee creator, object chVal)
+    {
+        if ((bool)chVal)
+        {
+
+            if (!pickedContentCreators.Contains(creator))
+            {
+                pickedContentCreators.Add(creator);
+            }
+        }
+        else
+        {
+            if (pickedContentCreators.Contains(creator))
+            {
+                pickedContentCreators.Remove(creator);
+                pickedCasters.Remove(creator);
+            }
+        }
+    }
+
+    void CheckingCasters(Employee creator, object chVal)
+    {
+        if ((bool)chVal)
+        {
+
+            if (!pickedCasters.Contains(creator))
+            {
+                pickedCasters.Add(creator);
+
+            }
+        }
+        else
+        {
+            if (pickedCasters.Contains(creator))
+            {
+                pickedCasters.Remove(creator);
+            }
+        }
+    }
+
+    protected async Task CheckInsideOrg(ChangeEventArgs e)
+    {
+        independentOrganizer = false;
+        ownOrganizer = true;
+    }
+
+    protected async Task CheckOutsideOrg(ChangeEventArgs e)
+    {
+        independentOrganizer = true;
+        ownOrganizer = false;
+    }
+
+    protected async Task Addlink()
+    {
+        liveLinks.Add("");
+    }
+
+    protected async Task RemoveLink()
+    {
+        liveLinks.RemoveAt(liveLinks.Count - 1);
+    }
+
+    protected async Task AddAwardPlace()
+    {
+        awardPerPlace.Add(0);
+        VerifyAwardPerPlace();
+    }
+
+    protected async Task RemoveAwardPlace()
+    {
+        awardPerPlace.RemoveAt(awardPerPlace.Count - 1);
+    }
+
+    protected void VerifyAwardPerPlace()
+    {
+        int counter = 0;
+        for(int i = 0; i < awardPerPlace.Count; i++)
+        {
+            if (awardPerPlace[i] < 0) awardPerPlace[i] = 0;
+            if (awardPerPlace[i] > 100) awardPerPlace[i] = 100;
+            counter += awardPerPlace[i];
+            if(counter > 100)
+            {
+                awardPerPlace[i] -= (counter - 100);
+                counter = 100;
+            }
+        }
+    }
+
+    protected void Cancel()
+    {
+        navigationManager.NavigateTo("/tourneys");
+    }
+
+    bool creatingContractor = false;
+
+    string conname = "";
+    string conemail = "";
+    double conprice = 1;
+    protected void CreateNewIndependentContractor()
+    {
+        creatingContractor = true;
+    }
+
+    protected void CancelCreateCon()
+    {
+        creatingContractor = false;
+    }
+
+    protected async void SaveCon()
+    {
+        if(conname == "" || conemail == "" || conprice < 1)
+            if (!onlineTourney && !offlineTourney) 
+            { 
+                await js.InvokeAsync<bool>("confirm", $"brakuje wartości");
+                return; 
+            }
+        creatingContractor = false;
+        await tourneyService.SaveNewIndepCon(new IndependentContractor(conname, conemail, conprice));
+    }
+
+    protected async void PickOrganizers()
+    {
+        if (!onlineTourney && !offlineTourney) 
+        { 
+            await js.InvokeAsync<bool>("confirm", $"No viewing type chosen");
+            return; 
+        }
+        if (awardPerPlace.Count < 1)
+        {
+            await js.InvokeAsync<bool>("confirm", $"Award per place has to have af least one place");
+            return; 
+        }
+        if(date < DateTime.Now.AddDays(14))
+        {
+            await js.InvokeAsync<bool>("confirm", $"Tourney must be later than 13 days from now");
+            return; 
+        }
+        if(name == "" || format == "")
+        {
+            await js.InvokeAsync<bool>("confirm", $"Must have name and format");
+            return; 
+        }
+        if(onlineTourney && liveLinks.Count < 1)
+        {
+            await js.InvokeAsync<bool>("confirm", $"Online tourney must have at least one link");
+            return; 
+        }
+        if(offlineTourney)
+        {
+            if(cityName == "" || roadName == "")
+            {
+                await js.InvokeAsync<bool>("confirm", $"Must have city and street name");
+                return;
+            }
+            if(hNumber < 1)
+            {
+                await js.InvokeAsync<bool>("confirm", $"Home number must be greater than one");
+                return;
+            }
+            if(ticketPrice < 0)
+            {
+                await js.InvokeAsync<bool>("confirm", $"Ticket price must be greater than or equal to 0");
+                return;
+            }
+        }
+        if (name == "" || format == "") return;
+        if ((onlineTourney && liveLinks.Count > 0) || (offlineTourney && cityName != "" && roadName != "" && hNumber > 0))
+            pickingOrganizers = true;
+    }
+
+    protected async void SaveTourney()
+    {
+        if (!onlineTourney && !offlineTourney) 
+        { 
+            return; 
+        }
+        OrganizerType orgType;
+        if (independentOrganizer)
+            orgType = OrganizerType.Independent;
+        else if (ownOrganizer)
+            orgType = OrganizerType.Own;
+        else
+            return;
+        if(coaching != null)
+        {
+            var newTournament = new SoloTourney((bool)coaching, TourneyState.Created, name, date, format, awardPool, awardPerPlace, orgType);
+            if (orgType == OrganizerType.Independent)
+                newTournament.AddIndependentOrganizer(pickedContractor);
+            else
+            {
+                foreach(var con in pickedContentCreators)
+                {
+                    newTournament.AddOwnOrganizer(con);
+                }
+                foreach(var con in pickedCasters)
+                {
+                    newTournament.AddCaster(con);
+                }
+            }
+            foreach(var emp in listPasser.empList)
+            {
+                newTournament.AddEmployee(emp);
+            }
+            if (onlineTourney)
+            {
+                newTournament.MakeOnline(liveLinks);
+            }
+            if (offlineTourney)
+            {
+                newTournament.MakeOffline(ticketPrice, new Adress(cityName, roadName, hNumber));
+            }
+            listPasser.teamList.Clear();
+            listPasser.empList.Clear();
+            await tourneyService.SaveNewSoloTourney(newTournament);
+        }
+        else if(penalty != null)
+        {
+            var newTournament = new TeamTourney((int)penalty, TourneyState.Created, name, date, format, awardPool, awardPerPlace, orgType);
+            if (orgType == OrganizerType.Independent)
+                newTournament.AddIndependentOrganizer(pickedContractor);
+            else
+            {
+                foreach(var con in pickedContentCreators)
+                {
+                    newTournament.AddOwnOrganizer(con);
+                }
+                foreach(var con in pickedCasters)
+                {
+                    newTournament.AddCaster(con);
+                }
+            }
+            foreach(var team in listPasser.teamList)
+            {
+                newTournament.AddTeam(team);
+            }
+            if (onlineTourney)
+            {
+                newTournament.MakeOnline(liveLinks);
+            }
+            if (offlineTourney)
+            {
+                newTournament.MakeOffline(ticketPrice, new Adress(cityName, roadName, hNumber));
+            }
+            listPasser.teamList.Clear();
+            listPasser.empList.Clear();
+            await tourneyService.SaveNewTeamTourney(newTournament);
+        }
+        navigationManager.NavigateTo("/tourneys");
+    }
+}

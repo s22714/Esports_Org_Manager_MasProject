@@ -1,0 +1,23 @@
+﻿@page "/"
+@inject OrganizationService organizationService
+@inject TourneyService tourneyService
+@inject TeamService teamService
+@inject NavigationManager navigationManager
+@inject ListPasser listPasser
+@attribute [StreamRendering(true)]
+@rendermode @(new InteractiveServerRenderMode(false))
+
+<PageTitle>Home</PageTitle>
+
+@foreach(var org in allOrgs)
+{
+    <label>@org</label>
+}
+
+@code{
+    List<Organization> allOrgs = new List<Organization>();
+    protected override async void OnInitialized()
+    {
+        //allOrgs = await organizationService.GetAllOrganizations();
+    }
+}

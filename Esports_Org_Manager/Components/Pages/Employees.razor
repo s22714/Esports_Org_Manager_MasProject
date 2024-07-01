@@ -1,0 +1,49 @@
+﻿@page "/employees"
+@inject TourneyService tourneyService
+@inject EmployeeService employeeService
+@inject NavigationManager navigationManager
+@attribute [StreamRendering(true)]
+@rendermode @(new InteractiveServerRenderMode(false))
+
+<PageTitle>Employees</PageTitle>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>name</th>
+            <th>last name</th>
+            <th>nick</th>
+            <th>email</th>
+            <th>status</th>
+            <th>role</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var emp in employees)
+        {
+            <tr @onclick="@(() => PickedRow(emp.id))">
+                <td>@emp.name</td>
+                <td>@emp.lastName</td>
+                <td>@emp.nick</td>
+                <td>@emp.email</td>
+                <td>@emp.status</td>
+                <td>@emp.employeeTypeDiscriminator.ToString()</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    List<Employee> employees = new();
+
+    protected override async void OnInitialized()
+    {
+        employees = await employeeService.GetAllEmployees();
+    }
+
+
+    void PickedRow(int id)
+    {
+        
+    }
+}

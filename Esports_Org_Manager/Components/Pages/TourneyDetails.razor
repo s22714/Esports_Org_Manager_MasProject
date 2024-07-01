@@ -1,0 +1,209 @@
+﻿@page "/tourneys/details={id:int}"
+@inject TourneyService tourneyService
+@inject TeamService teamService
+@inject NavigationManager navigationManager
+@inject ListPasser listPasser
+@attribute [StreamRendering(true)]
+@rendermode @(new InteractiveServerRenderMode(false))
+
+<h3>TourneyDetails</h3>
+@if(solo != null)
+{
+        <label>Name: @solo.name</label><br />
+    <label>state: @solo.state</label>
+    <br />
+    <label>date: @solo.date</label>
+<br />
+    <label>Format: @solo.format</label>
+<br />
+    <label>AwardPool: @solo.awardPool</label>
+<br />
+<br />
+<label>Procent per place</label>
+<br />
+
+    @foreach (var p in solo.procentPerPlace)
+{
+        <label>@(solo.procentPerPlace.IndexOf(p) + 1) @p</label>
+    <br />
+}
+<br />
+    <label>Time untill: @solo.timeUntill</label>
+<br />
+<br />
+<label>Stream links</label>
+<br />
+    @if (solo.viewTypeDiscriminator.Contains(ViewingType.Online))
+{
+        if (solo.streamLinks != null)
+    {
+            @foreach (var p in solo.streamLinks)
+        {
+            <label> - @p</label>
+            <br />
+        }
+    }
+   
+}
+    @if (solo.viewTypeDiscriminator.Contains(ViewingType.Offline))
+    {
+            <br />
+    <label>Ticket price: @solo.ticketPrice</label>
+<br />
+    <label>Adress: @solo.adress</label>
+<br />
+    }
+
+<br />
+<label>View type</label>
+<br />
+
+    @foreach (var p in solo.viewTypeDiscriminator)
+{
+    <label> - @p.ToString()</label>
+    <br />
+}
+
+    <label>Organizer type: @solo.organizerDiscriminator.ToString()</label>
+<br />
+    @if (@solo.organizerDiscriminator == OrganizerType.Independent)
+{
+        <label>@solo.independentOrganizer</label>
+    <br />
+}
+else
+{
+    <label>Organizer</label><br />
+        @foreach (var o in solo.ownOrganizers)
+    {
+        <label> - @o.name , @o.lastName</label><br />
+    }
+    <label>Casters</label><br />
+        @foreach (var o in solo.casters)
+    {
+        <label> - @o.name , @o.lastName</label>
+        <br />
+    }
+}
+<br /> 
+<label>Solo tourney</label>
+<br />
+<label>Allow coaching: @solo.allowCoaching</label>
+<br />
+<br />
+<label>Players</label><br />
+    @foreach(var p in solo.employees)
+    {
+        <label>Name: @p.name</label><br />
+        <label>Name: @p.lastName</label>
+        <br />
+    }
+}
+@if(team != null)
+{
+    <label>Name: @team.name</label>
+    <br />
+    <label>state: @team.state</label>
+    <br />
+    <label>date: @team.date</label>
+    <br />
+    <label>Format: @team.format</label>
+    <br />
+    <label>AwardPool: @team.awardPool</label>
+    <br />
+    <br />
+    <label>Procent per place</label>
+    <br />
+
+    @foreach (var p in team.procentPerPlace)
+    {
+        <label>@(team.procentPerPlace.IndexOf(p) + 1) @p</label>
+        <br />
+    }
+    <br />
+    <label>Time untill: @team.timeUntill</label>
+    <br />
+    <br />
+    <label>Stream links</label>
+    <br />
+    @if (team.viewTypeDiscriminator.Contains(ViewingType.Online))
+    {
+        if (team.streamLinks != null)
+        {
+            @foreach (var p in team.streamLinks)
+            {
+                <label> - @p</label>
+                <br />
+            }
+        }
+
+    }
+    <br />
+    @if (team.viewTypeDiscriminator.Contains(ViewingType.Offline))
+    {
+        <br />
+        <label>Ticket price: @team.ticketPrice | Adress: @team.adress</label>
+        
+    }
+    <br />
+    <label>View type</label>
+    <br />
+
+    @foreach (var p in team.viewTypeDiscriminator)
+    {
+        <label> - @p.ToString()</label>
+        <br />
+    }
+
+    <label>Organizer type: @team.organizerDiscriminator.ToString()</label>
+    <br />
+    @if (@team.organizerDiscriminator == OrganizerType.Independent)
+    {
+        <label>@team.independentOrganizer</label>
+        <br />
+    }
+    else
+    {
+        <label>Organizer</label>
+        <br />
+        @foreach (var o in team.ownOrganizers)
+        {
+            <label> - @o.name , @o.lastName</label>
+            <br />
+        }
+        <label>Casters</label>
+        <br />
+        @foreach (var o in team.casters)
+        {
+            <label> - @o.name , @o.lastName</label>
+            <br />
+        }
+    }
+    <br />
+    <label>Team tourney</label>
+    <br />
+    <label>Player change points penalty: @team.playerChangePointsPenalty</label>
+    <br />
+    <br />
+    <label>Teams</label>
+    <br />
+    @foreach (var p in team.teams)
+    {
+        <label>Name: @p.name</label>
+        <br />
+    }
+
+}
+
+
+@code {
+    [Parameter]
+    public int id { get; set; }
+    SoloTourney solo;
+    TeamTourney team;
+    protected override async void OnInitialized()
+    {
+        solo = await tourneyService.GetSoloTourney(id);
+        team = await tourneyService.GetTeamTourney(id);
+    }
+}

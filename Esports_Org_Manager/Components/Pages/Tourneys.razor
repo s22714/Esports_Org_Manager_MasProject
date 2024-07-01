@@ -1,0 +1,65 @@
+﻿@page "/tourneys"
+@inject TourneyService tourneyService
+@inject TeamService teamService
+@inject NavigationManager navigationManager
+@attribute [StreamRendering(true)]
+@rendermode @(new InteractiveServerRenderMode(false))
+@inject IJSRuntime js
+
+<PageTitle>Tourneys</PageTitle>
+
+<h1>Tourneys</h1>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>tourney name</th>
+            <th>format</th>
+            <th>date</th>
+            <th>award pool</th>
+            <th>time untill</th>
+            <th>state</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var tour in tourneys)
+        {
+            <tr @onclick="@(() => PickedRow(tour.id))">
+                <td>@tour.name</td>
+                <td>@tour.format</td>
+                <td>@tour.date</td>
+                <td>@tour.awardPool</td>
+                <td>@tour.timeUntill</td>
+                <td>@tour.state</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<button @onclick="CreateTourney" class="btn btn-primary">Create new</button>
+
+@code {
+
+    List<Tourney> tourneys = new();
+
+    protected override async void OnInitialized()
+    {
+        tourneys = await tourneyService.GetAllTourneys();
+    }
+
+    async void CreateTourney()
+    {
+        List<Team> teams = await teamService.GetAllTeams();
+        if(teams.Count < 2)
+        {
+            await js.InvokeAsync<bool>("confirm", $"Not enouth teams in system");
+            return;
+        }
+        
+        navigationManager.NavigateTo("/tourneys/create");
+    }
+
+    void PickedRow(int id){
+        navigationManager.NavigateTo($"/tourneys/details={id}");
+    }
+}

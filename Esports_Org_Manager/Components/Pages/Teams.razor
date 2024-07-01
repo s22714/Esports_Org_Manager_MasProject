@@ -1,0 +1,51 @@
+﻿@page "/teams"
+@inject TourneyService tourneyService
+@inject TeamService teamService
+@inject NavigationManager navigationManager
+@attribute [StreamRendering(true)]
+@rendermode @(new InteractiveServerRenderMode(false))
+
+<PageTitle>Teams</PageTitle>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>name</th>
+            <th>game played</th>
+            <th>creation date</th>
+            <th>logo</th>
+            <th>minimal age</th>
+            <th>min number of players</th>
+            <th>region</th>
+            <th>status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var team in allTeams)
+        {
+            <tr @onclick="@(() => PickedRow(team.id))">
+                <th>@team.name</th>
+                <th>@team.gamePlayed</th>
+                <th>@team.creationDate</th>
+                <th>@team.logo</th>
+                <th>@team.minimalAgeEligibility</th>
+                <th>@team.minimalNumberOfPlayers</th>
+                <th>@team.region</th>
+                <th>@team.status</th>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+
+    List<Team> allTeams = new List<Team>();
+    protected override async void OnInitialized()
+    {
+        allTeams = await teamService.GetAllTeams();
+    }
+
+    void PickedRow(int id){
+        navigationManager.NavigateTo($"/teams/details={id}");
+    }
+}
